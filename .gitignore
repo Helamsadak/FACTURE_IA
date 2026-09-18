@@ -1,0 +1,5 @@
+venv/
+factures/
+uploads/
+srv_err.log
+srv_out.log

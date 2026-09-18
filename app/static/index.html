@@ -1,0 +1,383 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCR Facture — Analyse intelligente de factures de soins</title>
+  <link rel="stylesheet" href="/static/style.css?v=130">
+</head>
+<body>
+
+  <!-- ====== AUTHENTIFICATION ====== -->
+  <div id="auth-view" class="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo" id="logo-about-auth" title="À propos d'OCR Facture"><img src="/static/logo.png" alt="Logo OCR Facture"></div>
+      <h1>OCR <span>Facture</span></h1>
+      <p class="auth-subtitle">Analyse intelligente des factures de soins médicaux</p>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" data-form="login-form">Connexion</button>
+        <button type="button" class="auth-tab" data-form="register-form">Inscription</button>
+      </div>
+
+      <form id="login-form" class="auth-form">
+        <label for="login-username">Nom d'utilisateur</label>
+        <input type="text" id="login-username" autocomplete="username" required placeholder="ex: admin">
+        <label for="login-password">Mot de passe</label>
+        <input type="password" id="login-password" autocomplete="current-password" required placeholder="••••••••">
+        <button type="submit" class="btn btn-primary">Se connecter</button>
+        <p class="auth-links">
+          <a href="#" id="show-forgot">Mot de passe oublié ?</a>
+        </p>
+      </form>
+
+      <form id="register-form" class="auth-form" style="display:none">
+        <label for="reg-username">Nom d'utilisateur</label>
+        <input type="text" id="reg-username" autocomplete="username" required placeholder="ex: admin">
+        <label for="reg-password">Mot de passe</label>
+        <input type="password" id="reg-password" autocomplete="new-password" required placeholder="8 caractères minimum" minlength="8">
+        <label for="reg-password-confirm">Confirmation du mot de passe</label>
+        <input type="password" id="reg-password-confirm" autocomplete="new-password" required placeholder="••••••••" minlength="8">
+        <label for="reg-fullname">Nom complet <span class="opt-tag">(optionnel)</span></label>
+        <input type="text" id="reg-fullname" autocomplete="name" placeholder="ex: Jean Dupont">
+        <label for="reg-phone">Téléphone <span class="opt-tag">(optionnel)</span></label>
+        <input type="tel" id="reg-phone" autocomplete="tel" placeholder="ex: 12345678" pattern="[0-9]{8}" maxlength="8">
+        <label for="reg-role">Rôle <span class="opt-tag">(optionnel)</span></label>
+        <select id="reg-role">
+          <option value="USER">Utilisateur</option>
+          <option value="ADMIN">Administrateur</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Créer mon compte</button>
+      </form>
+
+      <form id="forgot-form" class="auth-form" style="display:none">
+        <label for="forgot-username">Nom d'utilisateur</label>
+        <input type="text" id="forgot-username" autocomplete="username" required placeholder="ex: admin">
+        <label for="forgot-code">Code de récupération</label>
+        <input type="text" id="forgot-code" required placeholder="XXXX-XXXX-XXXX-XXXX">
+        <label for="forgot-new-password">Nouveau mot de passe</label>
+        <input type="password" id="forgot-new-password" autocomplete="new-password" required placeholder="8 caractères minimum" minlength="8">
+        <label for="forgot-new-password-confirm">Confirmation du nouveau mot de passe</label>
+        <input type="password" id="forgot-new-password-confirm" autocomplete="new-password" required placeholder="••••••••" minlength="8">
+        <button type="submit" class="btn btn-primary">Réinitialiser le mot de passe</button>
+        <p class="auth-links">
+          <a href="#" id="back-login">← Retour à la connexion</a>
+        </p>
+      </form>
+
+      <p id="auth-message" class="auth-message"></p>
+    </div>
+  </div>
+
+  <!-- ====== MODAL : CODE DE RÉCUPÉRATION (affiché une seule fois) ====== -->
+  <div id="recovery-modal" class="modal-overlay" style="display:none">
+    <div class="modal-box recovery-box">
+      <h3>🎉 Compte créé avec succès.</h3>
+      <p class="muted" style="margin:10px 0 18px">Votre code de récupération a été généré. Conservez-le dans un endroit sûr : il vous permettra de réinitialiser votre mot de passe si vous l'oubliez.</p>
+      <div class="recovery-code" id="recovery-code-value">----</div>
+      <div class="recovery-actions">
+        <button type="button" class="btn btn-accent btn-sm" id="recovery-copy">📋 Copier le code</button>
+        <button type="button" class="btn btn-outline btn-sm" id="recovery-print">🖨 Imprimer / Enregistrer</button>
+      </div>
+      <p class="recovery-warn">⚠️ Ce code ne sera plus jamais affiché. Ne le partagez pas.</p>
+      <button type="button" class="btn btn-primary" id="recovery-close" style="width:100%;margin-top:8px">J'ai bien noté mon code</button>
+    </div>
+  </div>
+
+  <!-- ====== APPLICATION ====== -->
+  <div id="app-view" style="display:none">
+    <nav class="navbar">
+      <div class="navbar-brand" id="logo-about-nav" title="Accueil — OCR Facture"><span>OCR Facture</span></div>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      <div class="navbar-menu" id="navbar-menu">
+        <button class="nav-btn active" data-page="home-tab">Accueil</button>
+        <button class="nav-btn" data-page="how-tab">Comment ça marche</button>
+        <button class="nav-btn" data-page="upload-tab">Télécharger</button>
+        <button class="nav-btn" data-page="list-tab">Mes factures</button>
+        <button class="nav-btn" data-page="suppliers-tab">Fournisseurs</button>
+        <button class="nav-btn" data-page="assistant-tab">Assistant IA</button>
+        <button class="nav-btn" data-page="account-tab">Mon compte</button>
+        <button class="btn btn-outline btn-sm" id="logout-btn" style="border-color:rgba(255,255,255,0.4);color:#fff">Déconnexion</button>
+      </div>
+    </nav>
+
+    <main class="container">
+
+      <!-- ===== ACCUEIL ===== -->
+      <section id="home-tab" class="page">
+        <div class="hero">
+          <h1>Vos factures de soins, <span>lues et analysées</span> en quelques secondes.</h1>
+          <p>Envoyez une photo ou un scan de votre facture médicale : OCR Facture extrait les informations, détecte les anomalies et la fraude, puis vous remet un rapport complet avec un identifiant unique.</p>
+          <div class="hero-actions">
+            <a class="btn btn-accent" href="#" onclick="goPage('upload-tab'); return false;">📤 Télécharger une facture</a>
+            <a class="btn btn-outline" href="#" onclick="goPage('how-tab'); return false;" style="border-color:rgba(255,255,255,0.5);color:#fff">Découvrir comment ça marche</a>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="home-stats">
+          <div class="stat-card"><div class="stat-value">—</div><div class="stat-label">Factures analysées</div></div>
+          <div class="stat-card"><div class="stat-value">—</div><div class="stat-label">Fournisseurs / médecins</div></div>
+          <div class="stat-card"><div class="stat-value">—</div><div class="stat-label">Factures à risque</div></div>
+          <div class="stat-card"><div class="stat-value">100%</div><div class="stat-label">Données protégées</div></div>
+        </div>
+
+        <!-- ===== TABLEAU DE BORD : répartition par fournisseur (TND) ===== -->
+        <div class="card" style="margin-top:26px">
+          <div class="section-head">
+            <span class="sec-ico">📊</span>
+            <h3>Tableau de bord — répartition des factures (TND)</h3>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="invoices" id="dash-partage">
+              <thead>
+                <tr>
+                  <th>Fournisseur / médecin</th>
+                  <th>Nombre de factures</th>
+                  <th>Total TTC (TND)</th>
+                  <th>Part du total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" class="muted" style="text-align:center;padding:18px">Chargement…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="muted" id="dash-totaux" style="margin-top:12px"></p>
+        </div>
+
+        <!-- ===== HISTORIQUE / TRAÇABILITÉ (journal de travail) ===== -->
+        <div class="card" style="margin-top:26px">
+          <div class="section-head">
+            <span class="sec-ico">🕘</span>
+            <h3>Historique — traçabilité de votre travail</h3>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="invoices" id="historique-liste">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Action</th>
+                  <th>Description</th>
+                  <th>Devise</th>
+                  <th>Facture</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" class="muted" style="text-align:center;padding:18px">Chargement…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon blue">🔍</div>
+            <h3>OCR manuscrit</h3>
+            <p>Lecture automatique des factures manuscrites ou imprimées grâce à EasyOCR, quel que soit le style d'écriture.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon yellow">🛡️</div>
+            <h3>Détection de fraude</h3>
+            <p>Classification du risque, score sur 100, indicateurs d'anomalies et recommandations par IA (Groq).</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon green">🗂️</div>
+            <h3>Organisation automatique</h3>
+            <p>PDF généré, classement par professionnel et identifiant unique FAC-XXXX-XXXX pour chaque facture.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== COMMENT ÇA MARCHE ===== -->
+      <section id="how-tab" class="page" style="display:none">
+        <div class="card">
+          <h2 class="card-title">Comment ça marche ?</h2>
+          <p class="section-subtitle">OCR Facture analyse vos factures de soins en 3 étapes simples, sans aucune saisie manuelle.</p>
+
+          <div class="steps">
+            <div class="step-card">
+              <div class="step-number">1</div>
+              <h3>📤 Téléchargez votre facture</h3>
+              <p>Prenez une photo ou scannez votre facture de soins (médecin, pharmacie, laboratoire, clinique). Déposez l'image dans la zone prévue ou choisissez le fichier depuis votre appareil.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">2</div>
+              <h3>🤖 L'IA lit et analyse</h3>
+              <p>L'OCR extrait le texte, une IA corrige les erreurs de lecture et identifie les champs : patient, professionnel, actes, montants et remboursement. Un moteur anti-fraude évalue ensuite la cohérence du document.</p>
+            </div>
+            <div class="step-card">
+              <div class="step-number">3</div>
+              <h3>📋 Consultez votre rapport</h3>
+              <p>Votre facture reçoit un identifiant unique FAC-XXXX-XXXX. Retrouvez les informations extraites, le score de risque, les recommandations et le PDF, classés dans votre espace.</p>
+            </div>
+          </div>
+
+          <div class="how-cta">
+            <a class="btn btn-primary" href="#" onclick="goPage('upload-tab'); return false;">Télécharger ma première facture</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TÉLÉCHARGER ===== -->
+      <section id="upload-tab" class="page" style="display:none">
+        <div class="card">
+          <h2 class="card-title">Analyser une facture de soins</h2>
+          <p class="section-subtitle">Téléchargez le document : l'OCR, la détection de fraude et l'analyse complète se lancent automatiquement.</p>
+
+          <div class="upload-layout">
+            <div>
+              <div id="drop-zone" class="drop-zone">
+                <div class="dz-icon">🖼️</div>
+                <div class="dz-title">Glissez votre facture ici</div>
+                <div class="dz-sub">JPG, PNG ou scan — le document reste privé</div>
+                <button type="button" class="btn btn-primary" id="select-file-btn">Choisir un ou plusieurs fichiers</button>
+                <input type="file" id="file-input" accept="image/*" multiple hidden>
+                <div id="file-chip-wrap"></div>
+              </div>
+
+              <div id="upload-loading" class="loading" style="display:none">
+                <div class="spinner lg"></div>
+                <div id="upload-loading-text">Traitement en cours…</div>
+              </div>
+            </div>
+
+            <div class="pipeline">
+              <button type="button" class="pipeline-btn" id="step-upload" data-step="upload" disabled>
+                <span class="step-ico">📤</span>
+                <span class="step-txt">
+                  <span class="step-title">Télécharger Facture</span>
+                  <span class="step-desc">Enregistrer le document dans votre espace</span>
+                </span>
+                <span class="step-status" data-status>→</span>
+              </button>
+
+              <button type="button" class="pipeline-btn" id="step-ocr" data-step="ocr" disabled>
+                <span class="step-ico">🔍</span>
+                <span class="step-txt">
+                  <span class="step-title">Lancer OCR</span>
+                  <span class="step-desc">Lire le texte et extraire les champs</span>
+                </span>
+                <span class="step-status" data-status>→</span>
+              </button>
+
+              <button type="button" class="pipeline-btn" id="step-fraude" data-step="fraude" disabled>
+                <span class="step-ico">🛡️</span>
+                <span class="step-txt">
+                  <span class="step-title">Détection Fraude Facture</span>
+                  <span class="step-desc">Vérifier la cohérence et les anomalies</span>
+                </span>
+                <span class="step-status" data-status>→</span>
+              </button>
+
+              <button type="button" class="pipeline-btn" id="step-analyser" data-step="analyser" disabled>
+                <span class="step-ico">📊</span>
+                <span class="step-txt">
+                  <span class="step-title">Analyser Facture</span>
+                  <span class="step-desc">Analyse visuelle + rapport complet + identifiant</span>
+                </span>
+                <span class="step-status" data-status>→</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="upload-result" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- ===== MES FACTURES ===== -->
+      <section id="list-tab" class="page" style="display:none">
+        <div class="card">
+          <h2 class="card-title">Mes factures</h2>
+          <p class="section-subtitle">Retrouvez toutes vos factures analysées, avec leur identifiant unique et leur niveau de risque.</p>
+          <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Rechercher par fournisseur, numéro, date ou identifiant…">
+            <button class="btn btn-primary" id="search-btn">Rechercher</button>
+            <button class="btn btn-accent" id="sel-show-btn">Afficher la sélection (0)</button>
+            <button class="btn btn-outline" id="sel-del-btn" style="color:#dc2626;border-color:rgba(220,38,38,0.4)">Supprimer la sélection (0)</button>
+          </div>
+          <div id="invoices-table-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ===== FOURNISSEURS ===== -->
+      <section id="suppliers-tab" class="page" style="display:none">
+        <div class="card">
+          <h2 class="card-title">Mes fournisseurs</h2>
+          <p class="section-subtitle">Chaque professionnel ou fournisseur a sa liste de factures et son nombre.</p>
+          <p id="suppliers-note" class="muted" style="display:none;margin-bottom:14px"></p>
+          <div id="suppliers-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ===== ASSISTANT IA ===== -->
+      <section id="assistant-tab" class="page" style="display:none">
+        <div class="card chat-page" style="padding:0;overflow:hidden">
+          <div class="chat-head">
+            <div>
+              <div class="chat-title">🤖 Assistant IA — InvoiceBot</div>
+              <div class="chat-sub">Questions sur vos factures, analyses anti-fraude et termes techniques</div>
+            </div>
+            <div class="chat-actions">
+              <button type="button" class="chat-icon-btn" id="chat-settings-toggle" title="Personnaliser le prompt">Options</button>
+              <button type="button" class="chat-icon-btn" id="chat-print-btn" title="Imprimer la conversation">Imprimer</button>
+            </div>
+          </div>
+
+          <div class="prompt-panel" id="chat-prompt-panel" style="display:none">
+            <p class="muted">Modifiez le style, le niveau de détail ou le rôle que le chatbot doit adopter.</p>
+            <textarea id="chat-prompt" rows="3" placeholder="Ex : Tu es un expert comptable. Réponds de façon très concise, avec des listes à puces."></textarea>
+            <button type="button" class="btn btn-outline btn-sm" id="chat-prompt-reset">Réinitialiser le prompt</button>
+          </div>
+
+          <div class="chat-window" id="chat-window">
+            <div class="chat-msg bot">
+              Bonjour, je suis votre assistant IA. Posez-moi des questions sur vos factures (montants, fournisseurs, dates) ou sur les analyses anti-fraude (classification, score de risque, indicateurs). J'explique aussi les termes techniques en langage simple.
+            </div>
+          </div>
+
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Votre question… (Entrée pour envoyer)">
+            <button type="button" class="btn btn-primary" id="chat-send-btn">Envoyer</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MON COMPTE ===== -->
+      <section id="account-tab" class="page" style="display:none">
+        <div class="card">
+          <h2 class="card-title">👤 Mon compte</h2>
+          <p class="section-subtitle" id="account-infos">Informations de votre compte.</p>
+          <div class="account-grid">
+            <div class="bcrypt-panel">
+              <h3 class="bcrypt-title">Modifier mon mot de passe</h3>
+              <label for="chg-current-password">Mot de passe actuel</label>
+              <input type="password" id="chg-current-password" autocomplete="current-password" required placeholder="••••••••">
+              <label for="chg-new-password">Nouveau mot de passe</label>
+              <input type="password" id="chg-new-password" autocomplete="new-password" required placeholder="8 caractères minimum" minlength="8">
+              <label for="chg-new-password-confirm">Confirmation du nouveau mot de passe</label>
+              <input type="password" id="chg-new-password-confirm" autocomplete="new-password" required placeholder="••••••••" minlength="8">
+              <button type="button" class="btn btn-primary" id="chg-password-btn">Modifier mon mot de passe</button>
+              <p class="auth-message" id="chg-message"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      OCR Facture — système intelligent d'analyse des factures de soins · données confidentielles par utilisateur
+    </footer>
+  </div>
+
+  <!-- ====== MODAL ====== -->
+  <div id="modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <span class="modal-close" id="modal-close">&times;</span>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=133"></script>
+</body>
+</html>
